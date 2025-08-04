@@ -52,6 +52,18 @@ if uploaded_file is not None:
         st.markdown("### Recent Activity Feed")
         st.dataframe(df[["User", "Action", "Timestamp"]].sort_values("Timestamp", ascending=False).head(10))
 
+        if "Lifecycle Phase" in df.columns:
+        st.markdown("### Assemblies by Lifecycle Phase")
+        lifecycle_counts = df["Lifecycle Phase"].value_counts().reset_index()
+        lifecycle_counts.columns = ["Lifecycle Phase", "Count"]
+        lifecycle_chart = alt.Chart(lifecycle_counts).mark_bar().encode(
+            x="Lifecycle Phase:N",
+            y="Count:Q",
+            color="Lifecycle Phase:N"
+        ).properties(width=600, height=300)
+        st.altair_chart(lifecycle_chart, use_container_width=True)
+
+
     # CAD file preview (mock)
     if "CAD Preview" in df.columns:
         st.markdown("### CAD File Preview")
