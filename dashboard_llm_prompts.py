@@ -1,16 +1,15 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
-import networkx as nx
-import matplotlib.pyplot as plt
+from pyvis.network import Network
+import streamlit.components.v1 as components
+import tempfile
 
 st.set_page_config(page_title="PLM Dashboard with LLM Prompt Generator", layout="wide")
 st.title("🧠 PLM Dashboard + LLM Prompt Generator")
 
-# File upload
 uploaded_file = st.file_uploader("📤 Upload your PLM CSV file (with BOM data included)", type=["csv"])
 
-# Prompt templates
 templates = {
     "Summarize Changes": "Here is a dataset:\n\n{table}\n\nPlease summarize the recent product changes and their status.",
     "Change Impact Analysis": "Given the following PLM data:\n\n{table}\n\nIdentify impacted assemblies and teams from recent ECOs.",
@@ -26,7 +25,7 @@ if uploaded_file:
     st.subheader("📄 PLM Data Preview")
     st.dataframe(df.head(100), use_container_width=True)
 
-    # Optional user filter
+    # Optional filter by user
     user_column = None
     if "User" in df.columns or "Modified By" in df.columns:
         user_column = "User" if "User" in df.columns else "Modified By"
@@ -35,49 +34,56 @@ if uploaded_file:
         st.markdown(f"### 📄 Changes by {selected_user}")
         st.dataframe(filtered_df, use_container_width=True)
 
-    # ────── 📊 VISUALIZATIONS ──────
+    # 📊 VISUALIZATIONS
     st.markdown("## 📊 Visualizations")
 
     if user_column:
         user_counts = df[user_column].value_counts().reset_index()
         user_counts.columns = ["User", "Edits"]
-        user_chart = alt.Chart(user_counts).mark_bar().encode(
-            x="User:N", y="Edits:Q", color="User:N"
-        ).properties(title="Edits by User", width=600, height=300)
-        st.altair_chart(user_chart, use_container_width=True)
+        st.altair_chart(
+            alt.Chart(user_counts).mark_bar().encode(
+                x="User:N", y="Edits:Q", color="User:N"
+            ).properties(title="Edits by User", width=600, height=300),
+            use_container_width=True
+        )
 
     if "Lifecycle Phase" in df.columns:
         lifecycle_counts = df["Lifecycle Phase"].value_counts().reset_index()
         lifecycle_counts.columns = ["Lifecycle Phase", "Count"]
-        lifecycle_chart = alt.Chart(lifecycle_counts).mark_bar().encode(
-            x="Lifecycle Phase:N", y="Count:Q", color="Lifecycle Phase:N"
-        ).properties(title="Assemblies by Lifecycle Phase", width=600, height=300)
-        st.altair_chart(lifecycle_chart, use_container_width=True)
+        st.altair_chart(
+            alt.Chart(lifecycle_counts).mark_bar().encode(
+                x="Lifecycle Phase:N", y="Count:Q", color="Lifecycle Phase:N"
+            ).properties(title="Assemblies by Lifecycle Phase", width=600, height=300),
+            use_container_width=True
+        )
 
     if "ECO Status" in df.columns:
         eco_counts = df["ECO Status"].value_counts().reset_index()
         eco_counts.columns = ["ECO Status", "Count"]
-        eco_chart = alt.Chart(eco_counts).mark_bar().encode(
-            x="ECO Status:N", y="Count:Q", color="ECO Status:N"
-        ).properties(title="ECOs by Status", width=600, height=300)
-        st.altair_chart(eco_chart, use_container_width=True)
+        st.altair_chart(
+            alt.Chart(eco_counts).mark_bar().encode(
+                x="ECO Status:N", y="Count:Q", color="ECO Status:N"
+            ).properties(title="ECOs by Status", width=600, height=300),
+            use_container_width=True
+        )
 
-    # ────── ⚙️ BOM RELATIONSHIPS ──────
+    # 🧩 BOM RELATIONSHIP DIAGRAM (Interactive)
     if {"Parent Part", "Child Part"}.issubset(df.columns):
-        st.markdown("### 🧩 BOM Relationship Diagram")
+        st.markdown("### 🔗 BOM Relationship Viewer")
         bom_df = df[["Parent Part", "Child Part", "Quantity"]].dropna()
-        G = nx.DiGraph()
+        net = Network(height="500px", width="100%", bgcolor="#f9f9f9", font_color="black", directed=True)
+
         for _, row in bom_df.iterrows():
-            G.add_edge(f"{row['Parent Part']}", f"{row['Child Part']}", label=f"Qty: {row['Quantity']}")
+            net.add_node(row["Parent Part"], label=row["Parent Part"], shape="box")
+            net.add_node(row["Child Part"], label=row["Child Part"], shape="ellipse")
+            net.add_edge(row["Parent Part"], row["Child Part"], title=f"Qty: {row['Quantity']}")
 
-        pos = nx.spring_layout(G)
-        plt.figure(figsize=(10, 6))
-        nx.draw(G, pos, with_labels=True, node_size=2000, node_color="lightsteelblue", font_size=10)
-        edge_labels = nx.get_edge_attributes(G, 'label')
-        nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
-        st.pyplot(plt)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp_file:
+            net.save_graph(tmp_file.name)
+            html_path = tmp_file.name
+        components.html(open(html_path, 'r', encoding='utf-8').read(), height=550)
 
-    # ────── 🧠 PROMPT GENERATION ──────
+    # 🧠 PROMPT GENERATION
     st.subheader("🧠 Generated Prompt")
     table_str = df.to_markdown(index=False)
 
