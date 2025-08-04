@@ -2,15 +2,15 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 
-st.set_page_config(page_title="PLM Prompt Generator", layout="wide")
-st.title("🧠 PLM Prompt Generator with LLM Integration")
+st.set_page_config(page_title="PLM Dashboard with LLM Prompts", layout="wide")
+st.title("🧩 PLM Dashboard + LLM Prompt Generator")
 
-uploaded_file = st.file_uploader("Upload a PLM-related CSV file", type=["csv"])
+uploaded_file = st.file_uploader("Upload your PLM-style CSV file", type=["csv"])
 
 templates = {
-    "Summarize Product Overview": "Here is a dataset:\n\n{table}\n\nPlease summarize the status of BOMs, revisions, and lifecycle stages.",
-    "Change Impact Analysis": "Given this PLM change data:\n\n{table}\n\nIdentify high-impact ECOs and summarize pending approvals or bottlenecks.",
-    "Collaboration Summary": "Review the following activity data:\n\n{table}\n\nSummarize recent actions, outstanding approvals, and collaboration gaps.",
+    "Summarize Change History": "Here is a dataset:\n\n{table}\n\nPlease summarize key change events, including major ECOs and lifecycle shifts.",
+    "Impact Analysis": "Given the following engineering changes:\n\n{table}\n\nWhich assemblies or subassemblies are most impacted?",
+    "Suggest Process Improvements": "Here is recent change and BOM data:\n\n{table}\n\nSuggest 2 ways to improve release-to-manufacturing efficiency.",
     "Freeform Prompt": "{custom}"
 }
 
@@ -19,40 +19,13 @@ prompt_type = st.sidebar.selectbox("Prompt Style", list(templates.keys()))
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
-    st.subheader("📄 Data Preview")
+    st.subheader("📄 Preview of Uploaded Data")
     st.dataframe(df.head(100), use_container_width=True)
 
-    # --------- Visualizations ----------
-    st.markdown("## 📈 PLM Visual Insights")
+    # ---------------- Visualizations ----------------
+    st.markdown("## 📊 Visualizations")
 
-    # BOM completeness
-    if "BOM Status" in df.columns and "Assembly" in df.columns:
-        st.markdown("### BOM Completeness by Assembly")
-        bom_chart = alt.Chart(df).mark_bar().encode(
-            x=alt.X("Assembly:N", title="Assembly"),
-            y=alt.Y("BOM Status:Q", title="Completeness %"),
-            color="Assembly:N"
-        ).properties(width=700, height=300)
-        st.altair_chart(bom_chart, use_container_width=True)
-
-    # ECO status
-    if "ECO Status" in df.columns:
-        st.markdown("### ECO Status Distribution")
-        eco_status = df["ECO Status"].value_counts().reset_index()
-        eco_status.columns = ["Status", "Count"]
-        eco_chart = alt.Chart(eco_status).mark_bar().encode(
-            x="Status:N",
-            y="Count:Q",
-            color="Status:N"
-        ).properties(width=600, height=300)
-        st.altair_chart(eco_chart, use_container_width=True)
-
-    # Activity feed
-    if "User" in df.columns and "Action" in df.columns:
-        st.markdown("### Recent Activity Feed")
-        st.dataframe(df[["User", "Action", "Timestamp"]].sort_values("Timestamp", ascending=False).head(10))
-
-        if "Lifecycle Phase" in df.columns:
+    if "Lifecycle Phase" in df.columns:
         st.markdown("### Assemblies by Lifecycle Phase")
         lifecycle_counts = df["Lifecycle Phase"].value_counts().reset_index()
         lifecycle_counts.columns = ["Lifecycle Phase", "Count"]
@@ -63,13 +36,38 @@ if uploaded_file is not None:
         ).properties(width=600, height=300)
         st.altair_chart(lifecycle_chart, use_container_width=True)
 
+    if "ECO Status" in df.columns:
+        st.markdown("### Engineering Change Order (ECO) Status")
+        eco_counts = df["ECO Status"].value_counts().reset_index()
+        eco_counts.columns = ["ECO Status", "Count"]
+        eco_chart = alt.Chart(eco_counts).mark_bar().encode(
+            x="ECO Status:N",
+            y="Count:Q",
+            color="ECO Status:N"
+        ).properties(width=600, height=300)
+        st.altair_chart(eco_chart, use_container_width=True)
 
-    # CAD file preview (mock)
+    if "BOM Status" in df.columns and "Revision" in df.columns:
+        st.markdown("### BOM Status by Revision")
+        bom_chart = alt.Chart(df).mark_boxplot().encode(
+            x="Revision:N",
+            y="BOM Status:Q",
+            color="Revision:N"
+        ).properties(width=600, height=300)
+        st.altair_chart(bom_chart, use_container_width=True)
+
     if "CAD Preview" in df.columns:
-        st.markdown("### CAD File Preview")
-        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/3D_CAD_model.png/640px-3D_CAD_model.png", caption="Example CAD Model", use_column_width=True)
+        st.markdown("### CAD Preview Availability")
+        cad_counts = df["CAD Preview"].value_counts().reset_index()
+        cad_counts.columns = ["CAD Preview", "Count"]
+        cad_chart = alt.Chart(cad_counts).mark_bar().encode(
+            x="CAD Preview:N",
+            y="Count:Q",
+            color="CAD Preview:N"
+        ).properties(width=600, height=300)
+        st.altair_chart(cad_chart, use_container_width=True)
 
-    # --------- Prompt Generation ----------
+    # ---------------- Prompt Generation ----------------
     table_str = df.to_markdown(index=False)
 
     if prompt_type == "Freeform Prompt":
@@ -78,6 +76,6 @@ if uploaded_file is not None:
     else:
         final_prompt = templates[prompt_type].replace("{table}", table_str)
 
-    st.subheader("🤖 Generated Prompt")
+    st.subheader("🧠 Generated Prompt for LLM")
     st.code(final_prompt, language="markdown")
-    st.download_button("Download Prompt as .txt", data=final_prompt, file_name="plm_prompt.txt")
+    st.download_button("Download Prompt as .txt", data=final_prompt, file_name="llm_prompt.txt")
