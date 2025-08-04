@@ -1,3 +1,5 @@
-streamlit
 pandas
-tabulate
+streamlit
+altair
+networkx
+matplotlib
