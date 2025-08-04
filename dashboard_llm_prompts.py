@@ -1,17 +1,16 @@
-
 import streamlit as st
 import pandas as pd
 import altair as alt
 
-st.set_page_config(page_title="LLM Prompt Generator from CSV", layout="wide")
-st.title("📊 LLM Prompt Generator from CSV")
+st.set_page_config(page_title="PLM Prompt Generator", layout="wide")
+st.title("🧠 PLM Prompt Generator with LLM Integration")
 
-uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
+uploaded_file = st.file_uploader("Upload a PLM-related CSV file", type=["csv"])
 
 templates = {
-    "Summarize Performance": "Here is a dataset:\n\n{table}\n\nPlease summarize key performance metrics and anomalies.",
-    "Root Cause Analysis": "Given this MES data:\n\n{table}\n\nIdentify potential root causes of alerts or deviations.",
-    "Suggest Improvements": "Here is a dataset:\n\n{table}\n\nIdentify areas of improvement and propose 2 concrete suggestions.",
+    "Summarize Product Overview": "Here is a dataset:\n\n{table}\n\nPlease summarize the status of BOMs, revisions, and lifecycle stages.",
+    "Change Impact Analysis": "Given this PLM change data:\n\n{table}\n\nIdentify high-impact ECOs and summarize pending approvals or bottlenecks.",
+    "Collaboration Summary": "Review the following activity data:\n\n{table}\n\nSummarize recent actions, outstanding approvals, and collaboration gaps.",
     "Freeform Prompt": "{custom}"
 }
 
@@ -20,41 +19,43 @@ prompt_type = st.sidebar.selectbox("Prompt Style", list(templates.keys()))
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
-    st.subheader("📄 Preview Data")
+    st.subheader("📄 Data Preview")
     st.dataframe(df.head(100), use_container_width=True)
 
     # --------- Visualizations ----------
-    st.markdown("## 📈 Visualizations")
+    st.markdown("## 📈 PLM Visual Insights")
 
-    if "Temp Avg (°C)" in df.columns:
-        if "Line" in df.columns:
-            st.markdown("### Average Temperature by Line")
-            temp_chart = alt.Chart(df).mark_line(point=True).encode(
-                x=alt.X("Start Time:N", title="Time"),
-                y=alt.Y("Temp Avg (°C):Q"),
-                color="Line:N"
-            ).properties(width=600, height=300)
-            st.altair_chart(temp_chart, use_container_width=True)
+    # BOM completeness
+    if "BOM Status" in df.columns and "Assembly" in df.columns:
+        st.markdown("### BOM Completeness by Assembly")
+        bom_chart = alt.Chart(df).mark_bar().encode(
+            x=alt.X("Assembly:N", title="Assembly"),
+            y=alt.Y("BOM Status:Q", title="Completeness %"),
+            color="Assembly:N"
+        ).properties(width=700, height=300)
+        st.altair_chart(bom_chart, use_container_width=True)
 
-        elif "Timestamp" in df.columns:
-            st.markdown("### Temperature Over Time")
-            time_chart = alt.Chart(df).mark_line(point=True).encode(
-                x="Timestamp:N",
-                y="Temp Avg (°C):Q",
-                color="Line:N"
-            ).properties(width=600, height=300)
-            st.altair_chart(time_chart, use_container_width=True)
-
-    if "Alerts" in df.columns:
-        st.markdown("### Alert Types")
-        alert_counts = df["Alerts"].value_counts().reset_index()
-        alert_counts.columns = ["Alert Type", "Count"]
-        bar_chart = alt.Chart(alert_counts).mark_bar().encode(
-            x="Alert Type:N",
+    # ECO status
+    if "ECO Status" in df.columns:
+        st.markdown("### ECO Status Distribution")
+        eco_status = df["ECO Status"].value_counts().reset_index()
+        eco_status.columns = ["Status", "Count"]
+        eco_chart = alt.Chart(eco_status).mark_bar().encode(
+            x="Status:N",
             y="Count:Q",
-            color="Alert Type:N"
+            color="Status:N"
         ).properties(width=600, height=300)
-        st.altair_chart(bar_chart, use_container_width=True)
+        st.altair_chart(eco_chart, use_container_width=True)
+
+    # Activity feed
+    if "User" in df.columns and "Action" in df.columns:
+        st.markdown("### Recent Activity Feed")
+        st.dataframe(df[["User", "Action", "Timestamp"]].sort_values("Timestamp", ascending=False).head(10))
+
+    # CAD file preview (mock)
+    if "CAD Preview" in df.columns:
+        st.markdown("### CAD File Preview")
+        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/3D_CAD_model.png/640px-3D_CAD_model.png", caption="Example CAD Model", use_column_width=True)
 
     # --------- Prompt Generation ----------
     table_str = df.to_markdown(index=False)
@@ -65,6 +66,6 @@ if uploaded_file is not None:
     else:
         final_prompt = templates[prompt_type].replace("{table}", table_str)
 
-    st.subheader("🧠 Generated Prompt")
+    st.subheader("🤖 Generated Prompt")
     st.code(final_prompt, language="markdown")
-    st.download_button("Download Prompt as .txt", data=final_prompt, file_name="llm_prompt.txt")
+    st.download_button("Download Prompt as .txt", data=final_prompt, file_name="plm_prompt.txt")
