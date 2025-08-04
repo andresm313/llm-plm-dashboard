@@ -25,8 +25,32 @@ if uploaded_file is not None:
     st.subheader("📄 Data Preview")
     st.dataframe(df.head(100), use_container_width=True)
 
+if "User" in df.columns or "Modified By" in df.columns:
+    user_column = "User" if "User" in df.columns else "Modified By"
+    unique_users = df[user_column].dropna().unique()
+    selected_user = st.selectbox("🔍 Filter by User", sorted(unique_users))
+
+    filtered_df = df[df[user_column] == selected_user]
+
+    st.markdown(f"### 📄 Changes Made by {selected_user}")
+    st.dataframe(filtered_df, use_container_width=True)
+else:
+    st.warning("No user or modifier column found to filter by.")
+
     st.markdown("## 📊 Visualizations")
 
+ if user_column in df.columns:
+    user_counts = df[user_column].value_counts().reset_index()
+    user_counts.columns = ["User", "Edits"]
+    user_chart = alt.Chart(user_counts).mark_bar().encode(
+        x=alt.X("User:N", title="User"),
+        y=alt.Y("Edits:Q", title="Number of Changes"),
+        color="User:N"
+    ).properties(title="Change Activity by User", width=600, height=300)
+
+    st.altair_chart(user_chart, use_container_width=True)
+
+    
     # Lifecycle Phase Visualization
     if "Lifecycle Phase" in df.columns:
         st.markdown("### Assemblies by Lifecycle Phase")
