@@ -69,7 +69,7 @@ if uploaded_file is not None:
 
     # Mockup CAD preview image
     st.markdown("### 🧷 CAD File Preview")
-    st.image("mock_cad_preview.png", caption="CAD Drawing - Assembly 102-RevB", use_container_width=True)
+    st.image("mock_cad_preview.png", caption="CAD Drawing - Assembly 102-RevB", width=400)
 
     # Prompt generation
     table_str = df.to_markdown(index=False)
